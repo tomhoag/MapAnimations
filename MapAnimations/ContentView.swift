@@ -8,14 +8,19 @@
 import SwiftUI
 import MapKit
 
-@Observable
+// Animation constants
+private enum AnimationConstants {
+    static let duration: CGFloat = 0.5
+    static let addingAnimation = Animation.spring(duration: duration, bounce: 0.5)
+    static let removingAnimaton = Animation.easeInOut(duration: duration)
+}
+
+
 class AnnotationState: ObservableObject {
 
-    static let animationDuration: CGFloat = 0.5
-
     let place: Place
-    var isVisible: Bool
-    var isRemoving: Bool
+    @Published var isVisible: Bool
+    @Published var isRemoving: Bool
 
     init(place: Place, isVisible: Bool = false, isRemoving: Bool = false) {
         self.place = place
@@ -25,22 +30,19 @@ class AnnotationState: ObservableObject {
 }
 
 struct AnnotationView: View {
-    @ObservedObject var state: AnnotationState
-
-    let addingAnimation = Animation.spring(duration: AnnotationState.animationDuration, bounce: 0.5)
-    let removingAnimaton = Animation.easeInOut(duration: AnnotationState.animationDuration)
+    @ObservedObject var annotationState: AnnotationState
 
     var body: some View {
-        let color: Color = state.isRemoving ? .red : (state.isVisible ? .blue : .green)
+        let color: Color = annotationState.isRemoving ? .red : (annotationState.isVisible ? .blue : .green)
 
         Image(systemName: "circle.fill")
             .foregroundColor(color)
-            .opacity(state.isVisible ? 1 : 0)
-            .scaleEffect(state.isVisible ? 1 : 0)
-            .animation(state.isRemoving ? removingAnimaton : addingAnimation, value: state.isVisible)
+            .opacity(annotationState.isVisible ? 1 : 0)
+            .scaleEffect(annotationState.isVisible ? 1 : 0)
+            .animation(annotationState.isRemoving ? AnimationConstants.removingAnimaton : AnimationConstants.addingAnimation, value: annotationState.isVisible)
             .onAppear {
-                if !state.isRemoving {
-                    state.isVisible = true
+                if !annotationState.isRemoving {
+                    annotationState.isVisible = true
                 }
             }
     }
@@ -58,10 +60,8 @@ struct ContentView: View {
         VStack {
             Button("Drink Me") {
                 viewModel.update()
-                if buttonScale < 0.5 {
-                    buttonScale = 1.0
-                } else {
-                    buttonScale = 0.0
+                withAnimation(.easeInOut(duration: AnimationConstants.duration)) {
+                    buttonScale = buttonScale < 0.5 ? 1.0 : 0
                 }
             }
 
@@ -78,13 +78,13 @@ struct ContentView: View {
             Map(position: $cameraPosition, interactionModes: .all) {
                 ForEach(annotationStates, id: \.place.id) { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
-                        AnnotationView(state: state)
+                        AnnotationView(annotationState: state)
                     }
                 }
             }
             .padding()
             .onAppear {
-                Task {
+                Task { @MainActor in
                     viewModel.update()
                     cameraPosition = .region(viewModel.mapRegion)
                 }
@@ -106,15 +106,14 @@ struct ContentView: View {
                 annotationStates.append(contentsOf: newStates)
 
                 // Then mark states for removal
-                for state in annotationStates {
-                    if !currentIds.contains(state.place.id) {
-                        state.isRemoving = true
-                        state.isVisible = false
-                    }
+                for state in annotationStates where !currentIds.contains(state.place.id) {
+                    state.isRemoving = true
+                    state.isVisible = false
                 }
 
                 // Clean up removed states after animation
-                DispatchQueue.main.asyncAfter(deadline: .now() + AnnotationState.animationDuration) {
+                Task { @MainActor in
+                    try? await Task.sleep(for: .seconds(AnimationConstants.duration))
                     annotationStates.removeAll { !currentIds.contains($0.place.id) }
                 }
 
