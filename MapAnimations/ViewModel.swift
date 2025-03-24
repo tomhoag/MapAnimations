@@ -8,21 +8,14 @@
 import SwiftUI
 import MapKit
 
-extension CLLocationCoordinate2D: @retroactive Hashable, @retroactive Equatable {
-    public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
-        lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
-    }
-
-    public func hash(into hasher: inout Hasher) {
-        hasher.combine(latitude)
-        hasher.combine(longitude)
-    }
-}
-
-struct Place: Equatable, Hashable {
+struct Place: PlaceProtocol {
     static func == (lhs: Place, rhs: Place) -> Bool {
         lhs.id == rhs.id
     }
+
+    func hash(into hasher: inout Hasher) {
+            hasher.combine(id)
+        }
 
     var id: Int
     var name: String
@@ -30,9 +23,9 @@ struct Place: Equatable, Hashable {
 }
 
 @Observable
-class ViewModel {
-
-    var places: [Place] = []
+class ViewModel: PlacesViewModel {
+    typealias PlaceType = Place
+    var places: [PlaceType] = []
     var useFirst = true
 
     static let baycity = Place(id: 1, name: "Bay City", coordinate: CLLocationCoordinate2D(latitude: 43.592846, longitude: -83.894348))
