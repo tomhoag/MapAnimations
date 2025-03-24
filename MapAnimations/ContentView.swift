@@ -15,7 +15,6 @@ private enum AnimationConstants {
     static let removingAnimaton = Animation.easeInOut(duration: duration)
 }
 
-
 class AnnotationState: ObservableObject {
 
     let place: Place
