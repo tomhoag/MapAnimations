@@ -9,52 +9,6 @@ import SwiftUI
 import MapKit
 
 
-@Observable
-class MappingViewModel {
-    var addedPlaces: [Place] = []
-    var removedPlaces: [Place] = []
-    var unchangedPlaces: [Place] = []
-    var previousPlaces: [Place]?
-
-    var addedHidden: Bool = true
-    var removedHidden: Bool = false
-    var unchangedHidden: Bool = false
-
-    init(places: [Place]) {
-        previousPlaces = places
-        self.update(places: places)
-    }
-
-    func update(places: [Place]) {
-
-        guard let _ = previousPlaces else {
-            previousPlaces = places
-            addedPlaces = places
-            return
-        }
-
-        let addedIds = Set(places.map { $0.id })
-            .subtracting(previousPlaces!.map { $0.id })
-
-        let removedIds = Set(previousPlaces!.map { $0.id })
-            .subtracting(places.map { $0.id })
-
-        let unchangedIds = Set(places.map { $0.id })
-            .subtracting(addedIds)
-            .subtracting(removedIds)
-
-        unchangedPlaces = places.filter { unchangedIds.contains($0.id) }
-        removedPlaces = previousPlaces!.filter { removedIds.contains($0.id) }
-        addedPlaces = places.filter { addedIds.contains($0.id) }
-
-        addedHidden = false
-        removedHidden = true
-        unchangedHidden = false
-
-        previousPlaces = places
-    }
-}
-
 extension CLLocationCoordinate2D: @retroactive Hashable, @retroactive Equatable {
     public static func == (lhs: CLLocationCoordinate2D, rhs: CLLocationCoordinate2D) -> Bool {
         lhs.latitude == rhs.latitude && lhs.longitude == rhs.longitude
@@ -80,7 +34,6 @@ struct Place: Equatable, Hashable {
 class ViewModel {
 
     var places: [Place] = []
-
     var useFirst = true
 
     static let baycity = Place(id: 1, name: "Bay City", coordinate: CLLocationCoordinate2D(latitude: 43.592846, longitude: -83.894348))
@@ -159,18 +112,22 @@ class ViewModel {
 
 struct AnimatedAnnotationView: View {
     let color: Color
-    let id: Int
+    let id: String
+    @State private var opacity: Double = 0
     @State private var scale: CGFloat = 0
-
+    
     var body: some View {
         Image(systemName: "circle.fill")
             .foregroundColor(color)
+            .opacity(opacity)
             .scaleEffect(scale)
             .font(.largeTitle)
-            .id("add_\(id)")  // Force view recreation
             .task {
-                print("[\(Date().timeIntervalSince1970)] Starting add animation")
+                print("[\(Date().timeIntervalSince1970)] Starting add animation for id: \(id)")
+                // Use a slight delay to ensure view is ready
+                try? await Task.sleep(for: .milliseconds(50))
                 withAnimation(.easeInOut(duration: 0.5)) {
+                    opacity = 1
                     scale = 1
                 }
             }
@@ -179,22 +136,32 @@ struct AnimatedAnnotationView: View {
 
 struct AnimatedRemovedAnnotationView: View {
     let color: Color
-    let id: Int
+    let id: String
+    @State private var opacity: Double = 1
     @State private var scale: CGFloat = 1
-
+    
     var body: some View {
         Image(systemName: "circle.fill")
             .foregroundColor(color)
+            .opacity(opacity)
             .scaleEffect(scale)
             .font(.largeTitle)
-            .id("remove_\(id)")  // Force view recreation
             .task {
-                print("[\(Date().timeIntervalSince1970)] Starting remove animation")
+                print("[\(Date().timeIntervalSince1970)] Starting remove animation for id: \(id)")
+                // Use a slight delay to ensure view is ready
+                try? await Task.sleep(for: .milliseconds(50))
                 withAnimation(.easeInOut(duration: 0.5)) {
+                    opacity = 0
                     scale = 0
                 }
             }
     }
+}
+
+// Add this struct near the top of the file
+struct AnimatedPlace: Identifiable {
+    let id = UUID()  // Unique ID for each instance
+    let place: Place
 }
 
 struct ContentView: View {
@@ -205,8 +172,8 @@ struct ContentView: View {
     @State private var buttonScale: CGFloat = 0
     @State private var previousPlaces: [Place]?
 
-    @State private var addedPlaces: [Place] = []
-    @State private var removedPlaces: [Place] = []
+    @State private var addedPlaces: [AnimatedPlace] = []
+    @State private var removedPlaces: [AnimatedPlace] = []
     @State private var unchangedPlaces: [Place] = []
 
     var body: some View {
@@ -236,26 +203,25 @@ struct ContentView: View {
             }
 
             Map(position: $cameraPosition, interactionModes: .all) {
-                // Unchanged Places
                 ForEach(unchangedPlaces, id: \.id) { place in
                     Annotation(place.name, coordinate: place.coordinate) {
                         Image(systemName: "circle.fill")
-                            .foregroundColor(.green)
+                            .foregroundColor(.blue)
                             .font(.largeTitle)
                     }
                 }
 
-                // Added places animate in
-                ForEach(addedPlaces, id: \.id) { place in
-                    Annotation(place.name, coordinate: place.coordinate) {
-                        AnimatedAnnotationView(color: .blue, id: place.id)
+                // Added places animate in (now using AnimatedPlace)
+                ForEach(addedPlaces) { animatedPlace in
+                    Annotation(animatedPlace.place.name, coordinate: animatedPlace.place.coordinate) {
+                        AnimatedAnnotationView(color: .blue, id: animatedPlace.id.uuidString)
                     }
                 }
 
-                // Removed places animate out
-                ForEach(removedPlaces, id: \.id) { place in
-                    Annotation(place.name, coordinate: place.coordinate) {
-                        AnimatedRemovedAnnotationView(color: .red, id: place.id)
+                // Removed places animate out (now using AnimatedPlace)
+                ForEach(removedPlaces) { animatedPlace in
+                    Annotation(animatedPlace.place.name, coordinate: animatedPlace.place.coordinate) {
+                        AnimatedRemovedAnnotationView(color: .blue, id: animatedPlace.id.uuidString)
                     }
                 }
             }
@@ -269,7 +235,7 @@ struct ContentView: View {
             .onChange(of: viewModel.places) { _, newPlaces in
                 guard let _ = self.previousPlaces else {
                     self.previousPlaces = newPlaces
-                    addedPlaces = newPlaces
+                    addedPlaces = newPlaces.map { AnimatedPlace(place: $0) }
                     return
                 }
 
@@ -286,19 +252,14 @@ struct ContentView: View {
                 print("[\(Date().timeIntervalSince1970)] Added IDs: \(addedIds)")
                 print("[\(Date().timeIntervalSince1970)] Removed IDs: \(removedIds)")
 
-                withAnimation(.easeInOut(duration: 2.5)) {
-                    print("[\(Date().timeIntervalSince1970)] Starting main animation")
+                unchangedPlaces = newPlaces.filter { unchangedIds.contains($0.id) }
+                removedPlaces = previousPlaces!
+                    .filter { removedIds.contains($0.id) }
+                    .map { AnimatedPlace(place: $0) }
+                addedPlaces = newPlaces
+                    .filter { addedIds.contains($0.id) }
+                    .map { AnimatedPlace(place: $0) }
 
-                    unchangedPlaces = newPlaces.filter { unchangedIds.contains($0.id) }
-                    addedPlaces = newPlaces.filter { addedIds.contains($0.id) }
-                    removedPlaces = previousPlaces!.filter { removedIds.contains($0.id) }
-                }
-
-                // Clear removed places after animation completes
-                withAnimation(.easeInOut(duration: 0.0).delay(2.5)) {
-                    print("[\(Date().timeIntervalSince1970)] Cleaning up removed places")
-                    removedPlaces = []
-                }
 
                 previousPlaces = newPlaces
             }
