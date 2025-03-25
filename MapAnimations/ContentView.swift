@@ -8,15 +8,15 @@
 import SwiftUI
 import MapKit
 
-struct ContentView: View, PlacesProvider {
+struct ContentView: View, EphRepresentableProvider {
     @State var cameraPosition: MapCameraPosition = .automatic
 
     @State private var buttonScale: CGFloat = 1.0
     @State private var previousPlaces: [MichiganCity]?
-    @State private var annotationStates: [AnnotationState<MichiganCity>] = []
+    @State private var annotationStates: [EphAnnotationState<MichiganCity>] = []
 
-    typealias PlaceType = MichiganCity
-    @State var places: [PlaceType] = []
+    typealias EphRepresentableType = MichiganCity
+    @State var places: [EphRepresentableType] = []
 
     func updatePlaces() {
         self.places = MichiganCities.random(count: 25)!
@@ -44,7 +44,7 @@ struct ContentView: View, PlacesProvider {
             Map(position: $cameraPosition, interactionModes: .all) {
                 ForEach(annotationStates, id: \.place.id) { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
-                        AnnotationView<MichiganCity>(annotationState: state)
+                        EphAnnotationView<MichiganCity>(annotationState: state)
                     }
                 }
             }
@@ -55,7 +55,7 @@ struct ContentView: View, PlacesProvider {
                     cameraPosition = .region(mapRegion)
                 }
             }
-            .onPlacesChange(
+            .onEphRepresentableChange(
                 provider: self,
                 previousPlaces: $previousPlaces,
                 annotationStates: $annotationStates

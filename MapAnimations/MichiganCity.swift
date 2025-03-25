@@ -8,7 +8,7 @@
 import SwiftUI
 import MapKit
 
-struct MichiganCity: Place {
+struct MichiganCity: EphRepresentable {
 
     static func == (lhs: MichiganCity, rhs: MichiganCity) -> Bool {
         lhs.id == rhs.id

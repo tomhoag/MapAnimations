@@ -1,8 +1,14 @@
+//
+//  EphemeralMapAnnotations.swift
+//
+//  Created by Tom Hoag on 3/23/25.
+//
+
 import SwiftUI
 import MapKit
 
 // MARK: Animation constants
-private enum AnimationConstants {
+private enum EphAnimationConstants {
     static let duration: CGFloat = 0.5
     static let addingAnimation = Animation.spring(duration: duration, bounce: 0.5)
     static let removingAnimaton = Animation.easeInOut(duration: duration)
@@ -10,21 +16,21 @@ private enum AnimationConstants {
 
 // MARK: Protocols
 
-protocol Place: Hashable, Equatable {
+protocol EphRepresentable: Hashable, Equatable {
     var id: Int { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
 
-protocol PlacesProvider {
-    associatedtype PlaceType: Place
-    var places: [PlaceType] { get set }
+protocol EphRepresentableProvider {
+    associatedtype EphRepresentableType: EphRepresentable
+    var places: [EphRepresentableType] { get set }
 }
 
 // MARK: Annotation supplements
 /**
  The encapsulation of a Place and it's associated booleans that determine how it will be animated in the next rendering of the Map that contains it.
  */
-class AnnotationState<P: Place>: ObservableObject {
+class EphAnnotationState<P: EphRepresentable>: ObservableObject {
     let place: P
     @Published var isVisible: Bool
     @Published var isRemoving: Bool
@@ -43,8 +49,8 @@ class AnnotationState<P: Place>: ObservableObject {
     }
 }
 
-struct AnnotationView<P: Place>: View {
-    @ObservedObject var annotationState: AnnotationState<P>
+struct EphAnnotationView<P: EphRepresentable>: View {
+    @ObservedObject var annotationState: EphAnnotationState<P>
 
     var body: some View {
         let color: Color = annotationState.isRemoving ? .red : (annotationState.isVisible ? .blue : .green)
@@ -53,7 +59,7 @@ struct AnnotationView<P: Place>: View {
             .foregroundColor(color)
             .opacity(annotationState.isVisible ? 1 : 0)
             .scaleEffect(annotationState.isVisible ? 1 : 0)
-            .animation(annotationState.isRemoving ? AnimationConstants.removingAnimaton : AnimationConstants.addingAnimation, value: annotationState.isVisible)
+            .animation(annotationState.isRemoving ? EphAnimationConstants.removingAnimaton : EphAnimationConstants.addingAnimation, value: annotationState.isVisible)
             .onAppear {
                 if !annotationState.isRemoving {
                     annotationState.isVisible = true
@@ -64,17 +70,17 @@ struct AnnotationView<P: Place>: View {
 
 // MARK: View Modifier
 
-struct PlacesChangeModifier<Provider: PlacesProvider>: ViewModifier {
+struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewModifier {
     let provider: Provider
-    @Binding var previousPlaces: [Provider.PlaceType]?
-    @Binding var annotationStates: [AnnotationState<Provider.PlaceType>]
+    @Binding var previousPlaces: [Provider.EphRepresentableType]?
+    @Binding var annotationStates: [EphAnnotationState<Provider.EphRepresentableType>]
 
     func body(content: Content) -> some View {
         content
             .onChange(of: provider.places) { _, newPlaces in
                 guard let previousPlaces = self.previousPlaces else {
                     self.previousPlaces = newPlaces
-                    annotationStates = newPlaces.map { AnnotationState(place: $0) }
+                    annotationStates = newPlaces.map { EphAnnotationState(place: $0) }
                     return
                 }
 
@@ -83,7 +89,7 @@ struct PlacesChangeModifier<Provider: PlacesProvider>: ViewModifier {
 
                 // First, add new states immediately
                 let newStates = newPlaces.filter { !oldIds.contains($0.id) }
-                    .map { AnnotationState(place: $0) }
+                    .map { EphAnnotationState(place: $0) }
                 annotationStates.append(contentsOf: newStates)
 
                 // Then mark states for removal
@@ -94,7 +100,7 @@ struct PlacesChangeModifier<Provider: PlacesProvider>: ViewModifier {
 
                 // Clean up removed states after animation
                 Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(AnimationConstants.duration))
+                    try? await Task.sleep(for: .seconds(EphAnimationConstants.duration))
                     annotationStates.removeAll { !currentIds.contains($0.place.id) }
                 }
 
@@ -106,12 +112,12 @@ struct PlacesChangeModifier<Provider: PlacesProvider>: ViewModifier {
 // MARK: The View Extension for the Modifier
 
 extension View {
-    func onPlacesChange<Provider: PlacesProvider>(
+    func onEphRepresentableChange<Provider: EphRepresentableProvider>(
         provider: Provider,
-        previousPlaces: Binding<[Provider.PlaceType]?>,
-        annotationStates: Binding<[AnnotationState<Provider.PlaceType>]>
+        previousPlaces: Binding<[Provider.EphRepresentableType]?>,
+        annotationStates: Binding<[EphAnnotationState<Provider.EphRepresentableType>]>
     ) -> some View {
-        modifier(PlacesChangeModifier(
+        modifier(EphRepresentableChangeModifier(
             provider: provider,
             previousPlaces: previousPlaces,
             annotationStates: annotationStates
