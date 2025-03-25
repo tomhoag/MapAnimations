@@ -16,11 +16,57 @@ private enum EphAnimationConstants {
 
 // MARK: Protocols
 
+/**
+ A protocol that describes the information needed about each location that will be animated as it is added or removed.
+
+ - Note that this protocol abides by Equatable and Hashable.  Accordingly, any struct that adopts this protocol must also
+ conform to Equatable and Hashable
+
+ ```
+ struct MichiganCity: EphRepresentable {
+
+     static func == (lhs: MichiganCity, rhs: MichiganCity) -> Bool { // <-- Equatable
+         lhs.id == rhs.id
+     }
+
+     func hash(into hasher: inout Hasher) { // <-- Hashable
+         hasher.combine(id)
+     }
+
+     var id: Int // <-- reqd by EphRepresentable protocol
+     var coordinate: CLLocationCoordinate2D // <-- reqd by EphRepresentable protocol
+
+    var name: String // <-- other property
+
+ }
+```
+ */
 protocol EphRepresentable: Hashable, Equatable {
     var id: Int { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
 
+/**
+ The protocol that must be adopted by the struct/class that will be providing the EphRepresentable instances.
+ The `associatedtype`  allow fors generic flexibility.
+
+ The protocol defines what a provider must do (provide places), but it doesn't specify exactly what kind of places.
+ The `associatedtype` lets each implementation of the protocol decide its specific place type.
+
+    - One provider might work with cities (MichiganCity)
+    - Another might work with parks (StatePark)
+    - Another with restaurants (Restaurant)
+
+ - Code Example:
+
+ `ContentView.swift` is providing the EphRepresentables as type MichiganCity:
+
+ ```
+ struct ContentView: View, EphRepresentableProvider {
+     typealias EphRepresentableType = MichiganCity
+     @State var places: [EphRepresentableType] = []
+```
+ */
 protocol EphRepresentableProvider {
     associatedtype EphRepresentableType: EphRepresentable
     var places: [EphRepresentableType] { get set }
