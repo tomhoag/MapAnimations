@@ -44,7 +44,12 @@ struct ContentView: View, EphRepresentableProvider {
             Map(position: $cameraPosition, interactionModes: .all) {
                 ForEach(annotationStates, id: \.place.id) { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
-                        EphAnnotationView<MichiganCity>(annotationState: state)
+                        //EphSystemImageAnnotationView<MichiganCity>(annotationState: state)
+                        EphAnnotationView(annotationState: state) {
+                            Circle()
+                                .foregroundColor(.green)
+                                .frame(width: 20)
+                        }
                     }
                 }
             }

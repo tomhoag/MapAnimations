@@ -7,86 +7,85 @@
 import SwiftUI
 import MapKit
 
-// MARK: Animation constants
+/**
+ Constants used for animation timing and behavior throughout the ephemeral annotation system.
+ */
 private enum EphAnimationConstants {
+    /// Duration of animations in seconds
     static let duration: CGFloat = 0.5
+    /// Spring animation used when adding annotations
     static let addingAnimation = Animation.spring(duration: duration, bounce: 0.5)
+    /// Ease in-out animation used when removing annotations
     static let removingAnimaton = Animation.easeInOut(duration: duration)
 }
 
-// MARK: Protocols
+/**
+ Base protocol defining read-only requirements for map annotations.
+
+ This protocol provides the fundamental properties needed to identify and position
+ an annotation on a map. It requires conformance to `Hashable` and `Equatable`
+ for unique identification and comparison of annotations.
+ */
+protocol EphDerivable: Hashable, Equatable {
+    var id: Int { get }
+    var coordinate: CLLocationCoordinate2D { get }
+}
 
 /**
- A protocol that describes the information needed about each location that will be animated as it is added or removed.
+ Protocol defining mutable requirements for map annotations.
 
- - Note that this protocol abides by Equatable and Hashable.  Accordingly, any struct that adopts this protocol must also
- conform to Equatable and Hashable
-
- ```
- struct MichiganCity: EphRepresentable {
-
-     static func == (lhs: MichiganCity, rhs: MichiganCity) -> Bool { // <-- Equatable
-         lhs.id == rhs.id
-     }
-
-     func hash(into hasher: inout Hasher) { // <-- Hashable
-         hasher.combine(id)
-     }
-
-     var id: Int // <-- reqd by EphRepresentable protocol
-     var coordinate: CLLocationCoordinate2D // <-- reqd by EphRepresentable protocol
-
-    var name: String // <-- other property
-
- }
-```
+ Extends `EphDerivable` to add mutability to the base properties, allowing
+ annotations to be updated during their lifecycle.
  */
-protocol EphRepresentable: Hashable, Equatable {
+protocol EphRepresentable: EphDerivable {
     var id: Int { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
 
 /**
- The protocol that must be adopted by the struct/class that will be providing the EphRepresentable instances.
- The `associatedtype`  allow fors generic flexibility.
+ Protocol for types that provide collections of map annotations.
 
- The protocol defines what a provider must do (provide places), but it doesn't specify exactly what kind of places.
- The `associatedtype` lets each implementation of the protocol decide its specific place type.
+ Implementing types must specify the concrete type of annotations they provide
+ through the associated type `EphRepresentableType`.
 
-    - One provider might work with cities (MichiganCity)
-    - Another might work with parks (StatePark)
-    - Another with restaurants (Restaurant)
-
- - Code Example:
-
- `ContentView.swift` is providing the EphRepresentables as type MichiganCity:
-
+ Example implementation:
+ ```swift
+ struct MyProvider: EphRepresentableProvider {
+     typealias EphRepresentableType = MyAnnotationType
+     @State var places: [MyAnnotationType] = []
+ }
  ```
- struct ContentView: View, EphRepresentableProvider {
-     typealias EphRepresentableType = MichiganCity
-     @State var places: [EphRepresentableType] = []
-```
  */
 protocol EphRepresentableProvider {
     associatedtype EphRepresentableType: EphRepresentable
     var places: [EphRepresentableType] { get set }
 }
 
-// MARK: Annotation supplements
 /**
- The encapsulation of a Place and it's associated booleans that determine how it will be animated in the next rendering of the Map that contains it.
+ Class managing the visibility state of a map annotation.
+
+ This observable class tracks whether an annotation should be visible on the map
+ and whether it's in the process of being removed. It works in conjunction with
+ animation modifiers to provide smooth transitions.
+
+ - Important: This class is ObservableObject and can be used with @StateObject or @ObservedObject.
+ Changing to @Observable is not recommended as it leads to unexpected behavior.
  */
 class EphAnnotationState<P: EphRepresentable>: ObservableObject {
+    /// The annotation being managed
     let place: P
+    /// Current visibility state
     @Published var isVisible: Bool
+    /// Whether the annotation is being removed
     @Published var isRemoving: Bool
 
     /**
-     Initializes a new AnnotationState
+     Creates a new annotation state.
 
-     - Parameter place: The Place object represented by this AnnotationState.
-     - Parameter isVisible: When true, the place will be visible on the Map
-     - Parameter isRemoving: When true, the place will be removed from the Map
+     - Parameters:
+        - place: The annotation to manage
+        - isVisible: Initial visibility state
+        - isRemoving: Initial removal state
      */
     init(place: P, isVisible: Bool = false, isRemoving: Bool = false) {
         self.place = place
@@ -95,27 +94,12 @@ class EphAnnotationState<P: EphRepresentable>: ObservableObject {
     }
 }
 
-struct EphAnnotationView<P: EphRepresentable>: View {
-    @ObservedObject var annotationState: EphAnnotationState<P>
+/**
+ ViewModifier that manages the lifecycle of map annotations.
 
-    var body: some View {
-        let color: Color = annotationState.isRemoving ? .red : (annotationState.isVisible ? .blue : .green)
-
-        Image(systemName: "circle.fill")
-            .foregroundColor(color)
-            .opacity(annotationState.isVisible ? 1 : 0)
-            .scaleEffect(annotationState.isVisible ? 1 : 0)
-            .animation(annotationState.isRemoving ? EphAnimationConstants.removingAnimaton : EphAnimationConstants.addingAnimation, value: annotationState.isVisible)
-            .onAppear {
-                if !annotationState.isRemoving {
-                    annotationState.isVisible = true
-                }
-            }
-    }
-}
-
-// MARK: View Modifier
-
+ Handles the addition and removal of annotations with appropriate animations.
+ Automatically cleans up removed annotations after their exit animation completes.
+ */
 struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewModifier {
     let provider: Provider
     @Binding var previousPlaces: [Provider.EphRepresentableType]?
@@ -133,18 +117,15 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
                 let currentIds = Set(newPlaces.map { $0.id })
                 let oldIds = Set(previousPlaces.map { $0.id })
 
-                // First, add new states immediately
                 let newStates = newPlaces.filter { !oldIds.contains($0.id) }
                     .map { EphAnnotationState(place: $0) }
                 annotationStates.append(contentsOf: newStates)
 
-                // Then mark states for removal
                 for state in annotationStates where !currentIds.contains(state.place.id) {
                     state.isRemoving = true
                     state.isVisible = false
                 }
 
-                // Clean up removed states after animation
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(EphAnimationConstants.duration))
                     annotationStates.removeAll { !currentIds.contains($0.place.id) }
@@ -155,9 +136,43 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
     }
 }
 
-// MARK: The View Extension for the Modifier
+/**
+ ViewModifier that applies ephemeral animation effects to a view.
+
+ Handles the fade in/out and scale animations for views as they appear and disappear.
+ */
+struct EphemeralEffect<P: EphRepresentable>: ViewModifier {
+    @ObservedObject var annotationState: EphAnnotationState<P>
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(annotationState.isVisible ? 1 : 0)
+            .scaleEffect(annotationState.isVisible ? 1 : 0)
+            .animation(
+                annotationState.isRemoving ?
+                    EphAnimationConstants.removingAnimaton :
+                    EphAnimationConstants.addingAnimation,
+                value: annotationState.isVisible
+            )
+            .onAppear {
+                if !annotationState.isRemoving {
+                    annotationState.isVisible = true
+                }
+            }
+    }
+}
+
+// MARK: - View Extensions
 
 extension View {
+    /**
+     Applies the ephemeral map annotation change modifier to a view.
+
+     - Parameters:
+        - provider: The source of annotation data
+        - previousPlaces: Binding to track the previous state of annotations
+        - annotationStates: Binding to the current annotation states
+     */
     func onEphRepresentableChange<Provider: EphRepresentableProvider>(
         provider: Provider,
         previousPlaces: Binding<[Provider.EphRepresentableType]?>,
@@ -168,5 +183,14 @@ extension View {
             previousPlaces: previousPlaces,
             annotationStates: annotationStates
         ))
+    }
+
+    /**
+     Applies ephemeral animation effects to a view.
+
+     - Parameter annotationState: The state controlling the view's animations
+     */
+    func ephemeralEffect<P: EphRepresentable>(annotationState: EphAnnotationState<P>) -> some View {
+        modifier(EphemeralEffect(annotationState: annotationState))
     }
 }
