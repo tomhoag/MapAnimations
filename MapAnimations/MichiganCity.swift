@@ -1,5 +1,5 @@
 //
-//  ViewModel.swift
+//  MichiganCity.swift
 //  MapAnimations
 //
 //  Created by Tom Hoag on 3/24/25.
@@ -7,16 +7,6 @@
 
 import SwiftUI
 import MapKit
-
-@Observable
-class ViewModel: PlacesViewModel {
-    typealias PlaceType = MichiganCity
-    var places: [PlaceType] = []
-
-    func update() {
-        self.places = MichiganCities.random(count: 6)!
-    }
-}
 
 struct MichiganCity: Place {
 

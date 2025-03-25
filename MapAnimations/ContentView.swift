@@ -8,18 +8,24 @@
 import SwiftUI
 import MapKit
 
-struct ContentView: View {
+struct ContentView: View, PlacesProvider {
     @State var cameraPosition: MapCameraPosition = .automatic
-    var viewModel = ViewModel()
 
     @State private var buttonScale: CGFloat = 1.0
     @State private var previousPlaces: [MichiganCity]?
     @State private var annotationStates: [AnnotationState<MichiganCity>] = []
 
+    typealias PlaceType = MichiganCity
+    @State var places: [PlaceType] = []
+
+    func updatePlaces() {
+        self.places = MichiganCities.random(count: 6)!
+    }
+
     var body: some View {
         VStack {
             Button("Drink Me") {
-                viewModel.update()
+                updatePlaces()
                 withAnimation(.easeInOut(duration: 0.4999)) {
                     buttonScale = buttonScale < 0.5 ? 1.0 : 0
                 }
@@ -45,12 +51,12 @@ struct ContentView: View {
             .padding()
             .onAppear {
                 Task { @MainActor in
-                    viewModel.update()
+                    updatePlaces()
                     cameraPosition = .region(mapRegion)
                 }
             }
             .onPlacesChange(
-                viewModel: viewModel,
+                provider: self,
                 previousPlaces: $previousPlaces,
                 annotationStates: $annotationStates
             )

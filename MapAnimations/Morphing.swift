@@ -12,11 +12,10 @@ private enum AnimationConstants {
 
 protocol Place: Hashable, Equatable {
     var id: Int { get set }
-    var name: String { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
 
-protocol PlacesViewModel {
+protocol PlacesProvider {
     associatedtype PlaceType: Place
     var places: [PlaceType] { get set }
 }
@@ -65,20 +64,14 @@ struct AnnotationView<P: Place>: View {
 
 // MARK: View Modifier
 
-struct PlacesChangeModifier<VM: PlacesViewModel>: ViewModifier {
-    let viewModel: VM
-    @Binding var previousPlaces: [VM.PlaceType]?
-    @Binding var annotationStates: [AnnotationState<VM.PlaceType>]
-
-    init(viewModel: VM, previousPlaces: Binding<[VM.PlaceType]?>, annotationStates: Binding<[AnnotationState<VM.PlaceType>]>) {
-        self.viewModel = viewModel
-        _previousPlaces = previousPlaces
-        _annotationStates = annotationStates
-    }
+struct PlacesChangeModifier<Provider: PlacesProvider>: ViewModifier {
+    let provider: Provider
+    @Binding var previousPlaces: [Provider.PlaceType]?
+    @Binding var annotationStates: [AnnotationState<Provider.PlaceType>]
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: viewModel.places) { _, newPlaces in
+            .onChange(of: provider.places) { _, newPlaces in
                 guard let previousPlaces = self.previousPlaces else {
                     self.previousPlaces = newPlaces
                     annotationStates = newPlaces.map { AnnotationState(place: $0) }
@@ -110,16 +103,16 @@ struct PlacesChangeModifier<VM: PlacesViewModel>: ViewModifier {
     }
 }
 
-// MARK: Extensions
+// MARK: The View Extension for the Modifier
 
 extension View {
-    func onPlacesChange<VM: PlacesViewModel>(
-        viewModel: VM,
-        previousPlaces: Binding<[VM.PlaceType]?>,
-        annotationStates: Binding<[AnnotationState<VM.PlaceType>]>
+    func onPlacesChange<Provider: PlacesProvider>(
+        provider: Provider,
+        previousPlaces: Binding<[Provider.PlaceType]?>,
+        annotationStates: Binding<[AnnotationState<Provider.PlaceType>]>
     ) -> some View {
         modifier(PlacesChangeModifier(
-            viewModel: viewModel,
+            provider: provider,
             previousPlaces: previousPlaces,
             annotationStates: annotationStates
         ))
