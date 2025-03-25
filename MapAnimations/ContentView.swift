@@ -19,7 +19,7 @@ struct ContentView: View, PlacesProvider {
     @State var places: [PlaceType] = []
 
     func updatePlaces() {
-        self.places = MichiganCities.random(count: 6)!
+        self.places = MichiganCities.random(count: 25)!
     }
 
     var body: some View {
