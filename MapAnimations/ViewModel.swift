@@ -8,96 +8,104 @@
 import SwiftUI
 import MapKit
 
-struct Place: PlaceProtocol {
-    static func == (lhs: Place, rhs: Place) -> Bool {
+@Observable
+class ViewModel: PlacesViewModel {
+    typealias PlaceType = MichiganCity
+    var places: [PlaceType] = []
+
+    func update() {
+        self.places = MichiganCities.random(count: 6)!
+    }
+}
+
+struct MichiganCity: Place {
+
+    static func == (lhs: MichiganCity, rhs: MichiganCity) -> Bool {
         lhs.id == rhs.id
     }
 
     func hash(into hasher: inout Hasher) {
-            hasher.combine(id)
-        }
+        hasher.combine(id)
+    }
 
     var id: Int
     var name: String
     var coordinate: CLLocationCoordinate2D
 }
 
-@Observable
-class ViewModel: PlacesViewModel {
-    typealias PlaceType = Place
-    var places: [PlaceType] = []
-    var useFirst = true
+enum MichiganCities: Int, CaseIterable{
 
-    static let baycity = Place(id: 1, name: "Bay City", coordinate: CLLocationCoordinate2D(latitude: 43.592846, longitude: -83.894348))
+    case baycity = 1
+    case grandhaven
+    case ecorse
+    case eastpointe
+    case escanaba
+    case fenton
+    case charlevoix
+    case bloomfieldhills
+    case bentonharbor
 
-    func update() {
-
-        var places: [Place] = []
-
-        if useFirst {
-            places = [
-                Place(id: 2, name: "Grand Haven", coordinate: CLLocationCoordinate2D(latitude:    43.062244, longitude:    -86.230759)),
-                Place(id: 3, name: "Escanaba", coordinate: CLLocationCoordinate2D(latitude: 45.745312, longitude:    -87.070457)),
-                Place(id: 4, name: "Ecorse", coordinate: CLLocationCoordinate2D(latitude:42.249313, longitude:    -83.151329)),
-                Place(id: 5, name: "Eastpointe", coordinate: CLLocationCoordinate2D(latitude:42.466595, longitude:    -82.959213)),
-                ViewModel.baycity
-            ]
-        } else {
-            places = [
-                Place(id: 6, name: "Charlevoix", coordinate: CLLocationCoordinate2D(latitude:45.317806, longitude:    -85.262009)),
-                Place(id: 7, name: "Bloomfield Hills", coordinate: CLLocationCoordinate2D(latitude:42.583652, longitude:    -83.248009)),
-                Place(id: 8, name: "Benton Harbor", coordinate: CLLocationCoordinate2D(latitude: 42.116463, longitude:    -86.457497)),
-                ViewModel.baycity
-            ]
-        }
-        useFirst.toggle()
-        self.places = places
+    var id: Int {
+        return self.rawValue
     }
 
-    var mapRegion: MKCoordinateRegion {
+    var coordinate: CLLocationCoordinate2D {
+        switch self {
+        case .baycity:
+            return CLLocationCoordinate2D(latitude: 43.592846, longitude: -83.894348)
+        case .grandhaven:
+            return CLLocationCoordinate2D(latitude: 43.062244, longitude: -86.230759)
+        case .ecorse:
+            return CLLocationCoordinate2D(latitude:42.249313, longitude: -83.151329)
+        case .escanaba:
+            return CLLocationCoordinate2D(latitude: 45.745312, longitude: -87.070457)
+        case .fenton:
+            return CLLocationCoordinate2D(latitude: 42.79781, longitude: -83.70495)
+        case .eastpointe:
+            return CLLocationCoordinate2D(latitude:42.466595, longitude: -82.959213)
+        case .charlevoix:
+            return CLLocationCoordinate2D(latitude:45.317806, longitude: -85.262009)
+        case .bloomfieldhills:
+            return CLLocationCoordinate2D(latitude:42.583652, longitude: -83.248009)
+        case .bentonharbor:
+            return CLLocationCoordinate2D(latitude: 42.116463, longitude: -86.457497)
+        }
+    }
 
-        let locations = self.places.map {
-            $0.coordinate
+    var name: String {
+        switch self {
+        case .baycity:
+            return "Bay City"
+        case .grandhaven:
+            return "Grand Haven"
+        case .ecorse:
+            return "Ecorse"
+        case .eastpointe:
+            return "East Pointe"
+        case .fenton:
+            return "Fenton"
+        case .escanaba:
+            return "Escanaba"
+        case .charlevoix:
+            return "Charlevoix"
+        case .bloomfieldhills:
+            return "Bloomfield Hills"
+        case .bentonharbor:
+            return "Benton Harbor"
+        }
+    }
+
+    var asPlace: MichiganCity {
+        return MichiganCity(id: self.id, name: self.name, coordinate: self.coordinate)
+    }
+
+    static func random(count: Int) -> [MichiganCity]? {
+        guard count > 0 else { return nil }
+
+        guard count < MichiganCities.allCases.count else {
+            return Array(MichiganCities.allCases.map { $0.asPlace })
         }
 
-        guard !locations.isEmpty else {
-            let center = CLLocationCoordinate2D(
-                latitude: 0,
-                longitude: 0
-            )
-            let span = MKCoordinateSpan(latitudeDelta: 1000, longitudeDelta: 1000)
-            return MKCoordinateRegion(center: center, span: span)
-        }
-
-        var minLat = locations[0].latitude
-        var maxLat = locations[0].latitude
-        var minLon = locations[0].longitude
-        var maxLon = locations[0].longitude
-
-        for location in locations {
-            if location.latitude < minLat {
-                minLat = location.latitude
-            }
-            if location.latitude > maxLat {
-                maxLat = location.latitude
-            }
-            if location.longitude < minLon {
-                minLon = location.longitude
-            }
-            if location.longitude > maxLon {
-                maxLon = location.longitude
-            }
-        }
-
-        let centerLat = (minLat + maxLat) / 2
-        let centerLon = (minLon + maxLon) / 2
-        let spanLat = (maxLat - minLat) * 1.25 // Add some padding
-        let spanLon = (maxLon - minLon) * 1.25 // Add some padding
-
-        let center = CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon)
-        //    let center = CLLocationCoordinate2D(latitude: group.coordinate.latitude, longitude: group.coordinate.longitude)
-        let span = MKCoordinateSpan(latitudeDelta: spanLat, longitudeDelta: spanLon)
-
-        return MKCoordinateRegion(center: center, span: span)
+        return Array(MichiganCities.allCases.shuffled().prefix(count)).map { $0.asPlace }
     }
 }

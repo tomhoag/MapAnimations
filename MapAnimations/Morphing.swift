@@ -10,24 +10,33 @@ private enum AnimationConstants {
 
 // MARK: Protocols
 
-protocol PlaceProtocol: Hashable, Equatable {
+protocol Place: Hashable, Equatable {
     var id: Int { get set }
     var name: String { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
 
 protocol PlacesViewModel {
-    associatedtype PlaceType: PlaceProtocol
+    associatedtype PlaceType: Place
     var places: [PlaceType] { get set }
 }
 
 // MARK: Annotation supplements
-
-class AnnotationState<P: PlaceProtocol>: ObservableObject {
+/**
+ The encapsulation of a Place and it's associated booleans that determine how it will be animated in the next rendering of the Map that contains it.
+ */
+class AnnotationState<P: Place>: ObservableObject {
     let place: P
     @Published var isVisible: Bool
     @Published var isRemoving: Bool
 
+    /**
+     Initializes a new AnnotationState
+
+     - Parameter place: The Place object represented by this AnnotationState.
+     - Parameter isVisible: When true, the place will be visible on the Map
+     - Parameter isRemoving: When true, the place will be removed from the Map
+     */
     init(place: P, isVisible: Bool = false, isRemoving: Bool = false) {
         self.place = place
         self.isVisible = isVisible
@@ -35,7 +44,7 @@ class AnnotationState<P: PlaceProtocol>: ObservableObject {
     }
 }
 
-struct AnnotationView<P: PlaceProtocol>: View {
+struct AnnotationView<P: Place>: View {
     @ObservedObject var annotationState: AnnotationState<P>
 
     var body: some View {
