@@ -77,9 +77,7 @@ struct EphSystemImageAnnotationView<P: EphRepresentable>: View {
             .foregroundColor(color)
             .font(font)
             .ephemeralEffect(
-                annotationState: annotationState,
-                addingAnimation: .easeInOut(duration: 2.0),
-                removingAnimation: .easeInOut(duration: 2.0)
+                annotationState: annotationState
             )
     }
 }

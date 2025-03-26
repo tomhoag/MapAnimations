@@ -63,8 +63,7 @@ struct ContentView: View, EphRepresentableProvider {
             .onEphRepresentableChange(
                 provider: self,
                 previousPlaces: $previousPlaces,
-                annotationStates: $annotationStates,
-                animationDuration: 2.0
+                annotationStates: $annotationStates
             )
         }
     }
