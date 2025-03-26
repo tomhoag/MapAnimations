@@ -16,7 +16,7 @@ private enum EphAnimationConstants {
     /// Spring animation used when adding annotations
     static let addingAnimation = Animation.spring(duration: duration, bounce: 0.5)
     /// Ease in-out animation used when removing annotations
-    static let removingAnimaton = Animation.easeInOut(duration: duration)
+    static let removingAnimation = Animation.easeInOut(duration: duration)
 }
 
 /**
@@ -104,6 +104,7 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
     let provider: Provider
     @Binding var previousPlaces: [Provider.EphRepresentableType]?
     @Binding var annotationStates: [EphAnnotationState<Provider.EphRepresentableType>]
+    var animationDuration: CGFloat = EphAnimationConstants.duration
 
     func body(content: Content) -> some View {
         content
@@ -127,7 +128,7 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
                 }
 
                 Task { @MainActor in
-                    try? await Task.sleep(for: .seconds(EphAnimationConstants.duration))
+                    try? await Task.sleep(for: .seconds(animationDuration))
                     annotationStates.removeAll { !currentIds.contains($0.place.id) }
                 }
 
@@ -141,8 +142,10 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
 
  Handles the fade in/out and scale animations for views as they appear and disappear.
  */
-struct EphemeralEffect<P: EphRepresentable>: ViewModifier {
+struct EphemeralEffectModifier<P: EphRepresentable>: ViewModifier {
     @ObservedObject var annotationState: EphAnnotationState<P>
+    var addingAnimation: Animation = EphAnimationConstants.addingAnimation
+    var removingAnimation: Animation = EphAnimationConstants.removingAnimation
 
     func body(content: Content) -> some View {
         content
@@ -150,8 +153,8 @@ struct EphemeralEffect<P: EphRepresentable>: ViewModifier {
             .scaleEffect(annotationState.isVisible ? 1 : 0)
             .animation(
                 annotationState.isRemoving ?
-                    EphAnimationConstants.removingAnimaton :
-                    EphAnimationConstants.addingAnimation,
+                    removingAnimation :
+                    addingAnimation,
                 value: annotationState.isVisible
             )
             .onAppear {
@@ -172,16 +175,19 @@ extension View {
         - provider: The source of annotation data
         - previousPlaces: Binding to track the previous state of annotations
         - annotationStates: Binding to the current annotation states
+        - animationDuration: The duration of the longer of the two (adding, removing) animations used in the ephemeralEffect modifier. If no animations are specified there, this parameter should not be passed in.
      */
     func onEphRepresentableChange<Provider: EphRepresentableProvider>(
         provider: Provider,
         previousPlaces: Binding<[Provider.EphRepresentableType]?>,
-        annotationStates: Binding<[EphAnnotationState<Provider.EphRepresentableType>]>
+        annotationStates: Binding<[EphAnnotationState<Provider.EphRepresentableType>]>,
+        animationDuration: CGFloat = EphAnimationConstants.duration
     ) -> some View {
         modifier(EphRepresentableChangeModifier(
             provider: provider,
             previousPlaces: previousPlaces,
-            annotationStates: annotationStates
+            annotationStates: annotationStates,
+            animationDuration: animationDuration
         ))
     }
 
@@ -190,7 +196,17 @@ extension View {
 
      - Parameter annotationState: The state controlling the view's animations
      */
-    func ephemeralEffect<P: EphRepresentable>(annotationState: EphAnnotationState<P>) -> some View {
-        modifier(EphemeralEffect(annotationState: annotationState))
+    func ephemeralEffect<P: EphRepresentable>(
+        annotationState: EphAnnotationState<P>,
+        addingAnimation: Animation = EphAnimationConstants.addingAnimation,
+        removingAnimation: Animation = EphAnimationConstants.removingAnimation
+    ) -> some View {
+        modifier(
+            EphemeralEffectModifier(
+                annotationState: annotationState,
+                addingAnimation: addingAnimation,
+                removingAnimation: removingAnimation
+            )
+        )
     }
 }

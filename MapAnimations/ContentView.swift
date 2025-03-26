@@ -44,12 +44,12 @@ struct ContentView: View, EphRepresentableProvider {
             Map(position: $cameraPosition, interactionModes: .all) {
                 ForEach(annotationStates, id: \.place.id) { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
-                        //EphSystemImageAnnotationView<MichiganCity>(annotationState: state)
-                        EphAnnotationView(annotationState: state) {
-                            Circle()
-                                .foregroundColor(.green)
-                                .frame(width: 20)
-                        }
+                        EphSystemImageAnnotationView<MichiganCity>(annotationState: state)
+//                        EphAnnotationView(annotationState: state) {
+//                            Circle()
+//                                .foregroundColor(.green)
+//                                .frame(width: 20)
+//                        }
                     }
                 }
             }
@@ -63,7 +63,8 @@ struct ContentView: View, EphRepresentableProvider {
             .onEphRepresentableChange(
                 provider: self,
                 previousPlaces: $previousPlaces,
-                annotationStates: $annotationStates
+                annotationStates: $annotationStates,
+                animationDuration: 2.0
             )
         }
     }

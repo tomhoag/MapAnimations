@@ -67,7 +67,7 @@ struct EphAnnotationView<P: EphRepresentable, Content: View>: View {
  */
 struct EphSystemImageAnnotationView<P: EphRepresentable>: View {
     @ObservedObject var annotationState: EphAnnotationState<P>
-    var systemName: String = ".triangle.fill"
+    var systemName: String = "triangle.fill"
     var font: Font = .largeTitle
 
     var body: some View {
@@ -76,7 +76,11 @@ struct EphSystemImageAnnotationView<P: EphRepresentable>: View {
         Image(systemName: systemName)
             .foregroundColor(color)
             .font(font)
-            .ephemeralEffect(annotationState: annotationState)
+            .ephemeralEffect(
+                annotationState: annotationState,
+                addingAnimation: .easeInOut(duration: 2.0),
+                removingAnimation: .easeInOut(duration: 2.0)
+            )
     }
 }
 
