@@ -29,7 +29,7 @@ extension EphemeralAnnotation where ER == MichiganCity {
 struct ContentView: View, EphRepresentableProvider {
 
     // MARK: EphRepresentableProvider
-    @State var places: [MichiganCity] = []
+    @State var ephemeralPlaces: [MichiganCity] = []
     @State var stateManager = EphStateManager<MichiganCity>()
 
     // MARK: ContentView state
@@ -95,7 +95,7 @@ struct ContentView: View, EphRepresentableProvider {
     }
 
     func updatePlaces() {
-        self.places = MichiganCities.random(count: 25)!
+        self.ephemeralPlaces = MichiganCities.random(count: 25)!
     }
 }
 

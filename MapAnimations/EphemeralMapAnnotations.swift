@@ -20,24 +20,12 @@ private enum EphAnimationConstants {
 }
 
 /**
- Base protocol defining read-only requirements for map annotations.
-
- This protocol provides the fundamental properties needed to identify and position
- an annotation on a map. It requires conformance to `Hashable` and `Equatable`
- for unique identification and comparison of annotations.
- */
-protocol EphDerivable: Hashable, Equatable {
-    var id: Int { get }
-    var coordinate: CLLocationCoordinate2D { get }
-}
-
-/**
  Protocol defining mutable requirements for map annotations.
 
  Extends `EphDerivable` to add mutability to the base properties, allowing
  annotations to be updated during their lifecycle.
  */
-protocol EphRepresentable: EphDerivable {
+protocol EphRepresentable: Equatable {
     var id: Int { get set }
     var coordinate: CLLocationCoordinate2D { get set }
 }
@@ -58,7 +46,7 @@ protocol EphRepresentable: EphDerivable {
  */
 protocol EphRepresentableProvider {
     associatedtype EphRepresentableType: EphRepresentable
-    var places: [EphRepresentableType] { get set }
+    var ephemeralPlaces: [EphRepresentableType] { get set }
     var stateManager: EphStateManager<EphRepresentableType> { get }
 }
 
@@ -76,9 +64,9 @@ class EphAnnotationState<P: EphRepresentable>: ObservableObject {
     /// The annotation being managed
     let place: P
     /// Current visibility state
-    @Published var isVisible: Bool
+    @Published private(set) var isVisible: Bool
     /// Whether the annotation is being removed
-    @Published var isRemoving: Bool
+    @Published private(set) var isRemoving: Bool
 
     /**
      Creates a new annotation state.
@@ -93,6 +81,19 @@ class EphAnnotationState<P: EphRepresentable>: ObservableObject {
         self.isVisible = isVisible
         self.isRemoving = isRemoving
     }
+
+    func makeVisible() {
+        isVisible = true
+    }
+
+    func makeInvisible() {
+        isVisible = false
+    }
+
+    func prepareForRemoval() {
+        isRemoving = true
+        makeInvisible()
+    }
 }
 
 /**
@@ -104,35 +105,65 @@ class EphAnnotationState<P: EphRepresentable>: ObservableObject {
 struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewModifier {
     let provider: Provider
     var animationDuration: CGFloat = EphAnimationConstants.duration
+    @State private var cleanupTasks: Set<Task<Void, Never>> = []
 
     func body(content: Content) -> some View {
         content
-            .onChange(of: provider.places) { _, newPlaces in
+            .onChange(of: provider.ephemeralPlaces) { _, newPlaces in
                 guard let previousPlaces = provider.stateManager.previousPlaces else {
                     provider.stateManager.previousPlaces = newPlaces
                     provider.stateManager.annotationStates = newPlaces.map { EphAnnotationState(place: $0) }
                     return
                 }
 
-                let currentIds = Set(newPlaces.map { $0.id })
-                let oldIds = Set(previousPlaces.map { $0.id })
+                let changes = calculateChanges(oldPlaces: previousPlaces, newPlaces: newPlaces)
 
-                let newStates = newPlaces.filter { !oldIds.contains($0.id) }
-                    .map { EphAnnotationState(place: $0) }
-                provider.stateManager.annotationStates.append(contentsOf: newStates)
+                // Add new states
+                provider.stateManager.annotationStates.append(contentsOf: changes.toAdd.map { EphAnnotationState(place: $0) })
 
-                for state in provider.stateManager.annotationStates where !currentIds.contains(state.place.id) {
-                    state.isRemoving = true
-                    state.isVisible = false
+                // Mark states for removal
+                for state in provider.stateManager.annotationStates where changes.toRemove.contains(state.place.id) {
+                    state.prepareForRemoval()
                 }
 
-                Task { @MainActor in
+                // Cancel and remove existing tasks
+                cleanupTasks.forEach { $0.cancel() }
+                cleanupTasks.removeAll()
+
+                // Start new cleanup
+                let task = Task {
                     try? await Task.sleep(for: .seconds(animationDuration))
-                    provider.stateManager.annotationStates.removeAll { !currentIds.contains($0.place.id) }
+                    guard !Task.isCancelled else { return }
+                    await MainActor.run {
+                        provider.stateManager.annotationStates.removeAll { changes.toRemove.contains($0.place.id) }
+                    }
                 }
+                cleanupTasks.insert(task)
 
                 provider.stateManager.previousPlaces = newPlaces
             }
+            .onDisappear {
+                cleanupTasks.forEach { $0.cancel() }
+                cleanupTasks.removeAll()
+            }
+    }
+
+    private struct Changes {
+        let toAdd: [Provider.EphRepresentableType]
+        let toRemove: Set<Int>
+    }
+
+    private func calculateChanges(
+        oldPlaces: [Provider.EphRepresentableType],
+        newPlaces: [Provider.EphRepresentableType]
+    ) -> Changes {
+        let oldIds = Dictionary(uniqueKeysWithValues: oldPlaces.map { ($0.id, $0) })
+        let newIds = Dictionary(uniqueKeysWithValues: newPlaces.map { ($0.id, $0) })
+
+        let toAdd = newPlaces.filter { !oldIds.keys.contains($0.id) }
+        let toRemove = Set(oldIds.keys).subtracting(newIds.keys)
+
+        return Changes(toAdd: toAdd, toRemove: toRemove)
     }
 }
 
@@ -158,7 +189,7 @@ struct EphemeralEffectModifier<P: EphRepresentable>: ViewModifier {
             )
             .onAppear {
                 if !annotationState.isRemoving {
-                    annotationState.isVisible = true
+                    annotationState.makeVisible()
                 }
             }
     }
