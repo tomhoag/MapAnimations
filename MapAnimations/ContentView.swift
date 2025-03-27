@@ -7,21 +7,36 @@
 
 import SwiftUI
 import MapKit
+import MichiganCities
+
+extension MichiganCity: EphRepresentable {
+    // EphRepresentable requires conformance to Identifiable and Equatable.
+    // Since MichiganCity already conforms to these two protocols, there is nothing
+    // needed here.
+}
+
+// Add an extension for when ER is MichiganCity
+extension EphemeralAnnotation where ER == MichiganCity {
+    @MapContentBuilder
+    var body: some MapContent {
+        Annotation(state.place.name, coordinate: state.place.coordinate) {
+            content()
+                .ephemeralEffect(annotationState: state)
+        }
+    }
+}
 
 struct ContentView: View, EphRepresentableProvider {
+
+    // MARK: EphRepresentableProvider
+    @State var places: [MichiganCity] = []
+    @State var stateManager = EphStateManager<MichiganCity>()
+
+    // MARK: ContentView state
     @State var cameraPosition: MapCameraPosition = .automatic
-
     @State private var buttonScale: CGFloat = 1.0
-    @State private var previousPlaces: [MichiganCity]?
-    @State private var annotationStates: [EphAnnotationState<MichiganCity>] = []
 
-    typealias EphRepresentableType = MichiganCity
-    @State var places: [EphRepresentableType] = []
-
-    func updatePlaces() {
-        self.places = MichiganCities.random(count: 25)!
-    }
-
+    // MARK: vars and funcs for map and UI
     var body: some View {
         VStack {
             Button("Drink Me") {
@@ -42,17 +57,16 @@ struct ContentView: View, EphRepresentableProvider {
             }
 
             Map(position: $cameraPosition, interactionModes: .all) {
-                ForEach(annotationStates, id: \.place.id) { state in
+                ForEach(stateManager.annotationStates, id: \.place.id) { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
-                        EphSystemImageAnnotationView<MichiganCity>(annotationState: state)
-//                        EphAnnotationView(annotationState: state) {
-//                            Circle()
-//                                .foregroundColor(.green)
-//                                .frame(width: 20)
-//                        }
+                        Circle()
+                            .frame(width: 20)
+                            .foregroundColor(.red)
+                            .ephemeralEffect(annotationState: state)
                     }
                 }
             }
+            .onEphRepresentableChange( provider: self )
             .padding()
             .onAppear {
                 Task { @MainActor in
@@ -60,11 +74,7 @@ struct ContentView: View, EphRepresentableProvider {
                     cameraPosition = .region(mapRegion)
                 }
             }
-            .onEphRepresentableChange(
-                provider: self,
-                previousPlaces: $previousPlaces,
-                annotationStates: $annotationStates
-            )
+
         }
     }
 
@@ -82,6 +92,10 @@ struct ContentView: View, EphRepresentableProvider {
         )
         
         return MKCoordinateRegion(center: center, span: span)
+    }
+
+    func updatePlaces() {
+        self.places = MichiganCities.random(count: 25)!
     }
 }
 

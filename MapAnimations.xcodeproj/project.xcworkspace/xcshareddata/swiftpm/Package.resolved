@@ -1,0 +1,15 @@
+{
+  "originHash" : "86821803968bcbdc38521342416d3646fcf18dbee1a1d77446dcf2bef6bc9fea",
+  "pins" : [
+    {
+      "identity" : "michigancities",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomhoag/MichiganCities",
+      "state" : {
+        "branch" : "main",
+        "revision" : "fec139b14d836684ab575497d8073b28ac2e674c"
+      }
+    }
+  ],
+  "version" : 3
+}

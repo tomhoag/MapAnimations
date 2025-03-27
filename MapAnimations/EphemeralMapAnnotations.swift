@@ -59,6 +59,7 @@ protocol EphRepresentable: EphDerivable {
 protocol EphRepresentableProvider {
     associatedtype EphRepresentableType: EphRepresentable
     var places: [EphRepresentableType] { get set }
+    var stateManager: EphStateManager<EphRepresentableType> { get }
 }
 
 /**
@@ -102,16 +103,14 @@ class EphAnnotationState<P: EphRepresentable>: ObservableObject {
  */
 struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewModifier {
     let provider: Provider
-    @Binding var previousPlaces: [Provider.EphRepresentableType]?
-    @Binding var annotationStates: [EphAnnotationState<Provider.EphRepresentableType>]
     var animationDuration: CGFloat = EphAnimationConstants.duration
 
     func body(content: Content) -> some View {
         content
             .onChange(of: provider.places) { _, newPlaces in
-                guard let previousPlaces = self.previousPlaces else {
-                    self.previousPlaces = newPlaces
-                    annotationStates = newPlaces.map { EphAnnotationState(place: $0) }
+                guard let previousPlaces = provider.stateManager.previousPlaces else {
+                    provider.stateManager.previousPlaces = newPlaces
+                    provider.stateManager.annotationStates = newPlaces.map { EphAnnotationState(place: $0) }
                     return
                 }
 
@@ -120,19 +119,19 @@ struct EphRepresentableChangeModifier<Provider: EphRepresentableProvider>: ViewM
 
                 let newStates = newPlaces.filter { !oldIds.contains($0.id) }
                     .map { EphAnnotationState(place: $0) }
-                annotationStates.append(contentsOf: newStates)
+                provider.stateManager.annotationStates.append(contentsOf: newStates)
 
-                for state in annotationStates where !currentIds.contains(state.place.id) {
+                for state in provider.stateManager.annotationStates where !currentIds.contains(state.place.id) {
                     state.isRemoving = true
                     state.isVisible = false
                 }
 
                 Task { @MainActor in
                     try? await Task.sleep(for: .seconds(animationDuration))
-                    annotationStates.removeAll { !currentIds.contains($0.place.id) }
+                    provider.stateManager.annotationStates.removeAll { !currentIds.contains($0.place.id) }
                 }
 
-                self.previousPlaces = newPlaces
+                provider.stateManager.previousPlaces = newPlaces
             }
     }
 }
@@ -179,14 +178,10 @@ extension View {
      */
     func onEphRepresentableChange<Provider: EphRepresentableProvider>(
         provider: Provider,
-        previousPlaces: Binding<[Provider.EphRepresentableType]?>,
-        annotationStates: Binding<[EphAnnotationState<Provider.EphRepresentableType>]>,
         animationDuration: CGFloat = EphAnimationConstants.duration
     ) -> some View {
         modifier(EphRepresentableChangeModifier(
             provider: provider,
-            previousPlaces: previousPlaces,
-            annotationStates: annotationStates,
             animationDuration: animationDuration
         ))
     }

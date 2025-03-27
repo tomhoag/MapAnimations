@@ -6,7 +6,28 @@
 //
 
 import SwiftUI
+import MapKit
 
+struct EphemeralAnnotation<ER: EphRepresentable, Content: View>: MapContent {
+    let state: EphAnnotationState<ER>
+    let content: () -> Content
+
+    init(state: EphAnnotationState<ER>, @ViewBuilder content: @escaping () -> Content) {
+        self.state = state
+        self.content = content
+    }
+
+    @MapContentBuilder @MainActor
+    var body: some MapContent {
+        Annotation("", coordinate: state.place.coordinate) {
+            content()
+        }
+    }
+}
+
+/**
+ General Note: In Xcode 17 we can use the new @Observable macro for models, but since EphAnnotationState is being used with SwiftUI views and we need property observation, @ObservableObject is still the correct choice here. Changing to @Observable can cause unexpected behavior with animation states
+ */
 
 /**
  A generic ephemeral view that wraps any View content and applies the ephemeral animation effect.
@@ -21,24 +42,56 @@ import SwiftUI
  }
  ```
 
+ - Note: In SwiftUI, the Content type is inferred from the ViewBuilder closure we pass to EphAnnotationView. When we pass Circle().frame().foregroundColor(), Swift infers Content as some View. We don't need to explicitly specify it.
+
  - Parameters:
-   - P: The type conforming to `EphRepresentable` protocol
+   - ER: The type conforming to `EphRepresentable` protocol
    - Content: The type of view being wrapped
    - annotationState: The state object managing the ephemeral animation
    - content: A closure returning the view to be animated
  */
-struct EphAnnotationView<P: EphRepresentable, Content: View>: View {
-    @ObservedObject var annotationState: EphAnnotationState<P>
-    let content: Content
 
-    init(annotationState: EphAnnotationState<P>, @ViewBuilder content: () -> Content) {
+struct EphAnnotationView<ER: EphRepresentable, Content: View>: View {
+    @ObservedObject var annotationState: EphAnnotationState<ER>
+    let content: () -> Content
+
+    init(annotationState: EphAnnotationState<ER>, @ViewBuilder content: @escaping () -> Content) {
         self.annotationState = annotationState
-        self.content = content()
+        self.content = content
     }
 
     var body: some View {
-        content
+        content()
             .ephemeralEffect(annotationState: annotationState)
+    }
+}
+
+/**
+ A circular view with ephemeral animation effects.
+
+ Creates an animated circle with customizable size and color. The circle animates
+ in and out based on the annotation state.
+
+ Example usage:
+ ```swift
+ CircleAnnotationView(
+     annotationState: myState,
+     diameter: 30,
+     color: .red
+ )
+ ```
+ */
+struct CircleAnnotation<ER: EphRepresentable>: View {
+    @ObservedObject var annotationState: EphAnnotationState<ER>
+    var color: Color = .blue
+    var diameter: CGFloat = 20
+
+    var body: some View {
+        EphAnnotationView(annotationState: annotationState) {
+            Circle()
+                .frame(width: diameter, height: diameter)
+                .foregroundColor(color)
+        }
     }
 }
 
@@ -52,66 +105,25 @@ struct EphAnnotationView<P: EphRepresentable, Content: View>: View {
 
  Example usage:
  ```swift
- EphSystemImageAnnotationView(
+ SystemImageAnnotation(
      annotationState: myState,
      systemName: "star.fill",
      font: .title
  )
  ```
-
- - Parameters:
-   - P: The type conforming to `EphRepresentable` protocol
-   - annotationState: The state object managing the ephemeral animation
-   - systemName: The name of the SF Symbol to display (default: ".triangle.fill")
-   - font: The font size for the system image (default: .largeTitle)
  */
-struct EphSystemImageAnnotationView<P: EphRepresentable>: View {
-    @ObservedObject var annotationState: EphAnnotationState<P>
+struct SystemImageAnnotation<ER: EphRepresentable>: View {
+    @ObservedObject var annotationState: EphAnnotationState<ER>
     var systemName: String = "triangle.fill"
     var font: Font = .largeTitle
 
     var body: some View {
-        let color: Color = annotationState.isRemoving ? .red : (annotationState.isVisible ? .blue : .green)
+        EphAnnotationView(annotationState: annotationState) {
+            let color: Color = annotationState.isRemoving ? .red : (annotationState.isVisible ? .blue : .green)
 
-        Image(systemName: systemName)
-            .foregroundColor(color)
-            .font(font)
-            .ephemeralEffect(
-                annotationState: annotationState
-            )
-    }
-}
-
-/**
- A circular view with ephemeral animation effects.
-
- Creates an animated circle with customizable size and color. The circle animates
- in and out based on the annotation state.
-
- Example usage:
- ```swift
- EphCircleAnnotationView(
-     annotationState: myState,
-     diameter: 30,
-     color: .red
- )
- ```
-
- - Parameters:
-   - P: The type conforming to `EphRepresentable` protocol
-   - annotationState: The state object managing the ephemeral animation
-   - diameter: The width and height of the circle (default: 25)
-   - color: The color of the circle (default: .yellow)
- */
-struct EphCircleAnnotationView<P: EphRepresentable>: View {
-    @ObservedObject var annotationState: EphAnnotationState<P>
-    var diameter: CGFloat = 25
-    var color: Color = .yellow
-
-    var body: some View {
-        Circle()
-            .frame(width: diameter, height: diameter)
-            .foregroundColor(color)
-            .ephemeralEffect(annotationState: annotationState)
+            Image(systemName: systemName)
+                .foregroundColor(color)
+                .font(font)
+        }
     }
 }
