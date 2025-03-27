@@ -15,17 +15,6 @@ extension MichiganCity: EphRepresentable {
     // needed here.
 }
 
-// Add an extension for when ER is MichiganCity
-extension EphemeralAnnotation where ER == MichiganCity {
-    @MapContentBuilder
-    var body: some MapContent {
-        Annotation(state.place.name, coordinate: state.place.coordinate) {
-            content()
-                .ephemeralEffect(annotationState: state)
-        }
-    }
-}
-
 struct ContentView: View, EphRepresentableProvider {
 
     // MARK: EphRepresentableProvider
