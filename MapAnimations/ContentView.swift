@@ -8,8 +8,9 @@
 import SwiftUI
 import MapKit
 import MichiganCities
+import EphemeralMapAnnotations
 
-extension MichiganCity: EphRepresentable {
+extension MichiganCity: @retroactive EphRepresentable {
     // EphRepresentable requires conformance to Identifiable and Equatable.
     // Since MichiganCity already conforms to these two protocols, there is nothing
     // needed here.
