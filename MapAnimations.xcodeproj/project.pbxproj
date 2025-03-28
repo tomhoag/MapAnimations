@@ -8,8 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0056DF2A2D95C09F00354A38 /* MichiganCities in Frameworks */ = {isa = PBXBuildFile; productRef = 0099C57F2D95B714007AD593 /* MichiganCities */; };
-		0056DF402D95C0C100354A38 /* MichiganCities in Frameworks */ = {isa = PBXBuildFile; productRef = 0056DF3F2D95C0C100354A38 /* MichiganCities */; };
-		0056E0292D960EB300354A38 /* EphemeralMapAnnotations in Frameworks */ = {isa = PBXBuildFile; productRef = 0056E0282D960EB300354A38 /* EphemeralMapAnnotations */; };
+		00B955852D9631E200F7A544 /* EphemeralMapAnnotations in Frameworks */ = {isa = PBXBuildFile; productRef = 00B955842D9631E200F7A544 /* EphemeralMapAnnotations */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -58,9 +57,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				00B955852D9631E200F7A544 /* EphemeralMapAnnotations in Frameworks */,
 				0056DF2A2D95C09F00354A38 /* MichiganCities in Frameworks */,
-				0056E0292D960EB300354A38 /* EphemeralMapAnnotations in Frameworks */,
-				0056DF402D95C0C100354A38 /* MichiganCities in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -87,6 +85,7 @@
 				003421CD2D90831C00108D35 /* MapAnimations */,
 				003421DE2D90831E00108D35 /* MapAnimationsTests */,
 				003421E82D90831E00108D35 /* MapAnimationsUITests */,
+				00B955822D9631B000F7A544 /* Frameworks */,
 				003421CC2D90831C00108D35 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,6 +98,13 @@
 				003421E52D90831E00108D35 /* MapAnimationsUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		00B955822D9631B000F7A544 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -122,8 +128,9 @@
 			name = MapAnimations;
 			packageProductDependencies = (
 				0099C57F2D95B714007AD593 /* MichiganCities */,
-				0056DF3F2D95C0C100354A38 /* MichiganCities */,
 				0056E0282D960EB300354A38 /* EphemeralMapAnnotations */,
+				000765332D9612230062B232 /* EphemeralMapAnnotations */,
+				00B955842D9631E200F7A544 /* EphemeralMapAnnotations */,
 			);
 			productName = MapAnimations;
 			productReference = 003421CB2D90831C00108D35 /* MapAnimations.app */;
@@ -208,8 +215,8 @@
 			mainGroup = 003421C22D90831B00108D35;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				0056DF3E2D95C0C100354A38 /* XCRemoteSwiftPackageReference "MichiganCities" */,
-				0056E0272D960EB300354A38 /* XCLocalSwiftPackageReference "../EphemeralMapAnnotations" */,
+				00B9554D2D96127100F7A544 /* XCRemoteSwiftPackageReference "MichiganCities" */,
+				00B955832D9631E200F7A544 /* XCRemoteSwiftPackageReference "EphemeralMapAnnotations" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 003421CC2D90831C00108D35 /* Products */;
@@ -575,15 +582,8 @@
 		};
 /* End XCConfigurationList section */
 
-/* Begin XCLocalSwiftPackageReference section */
-		0056E0272D960EB300354A38 /* XCLocalSwiftPackageReference "../EphemeralMapAnnotations" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = ../EphemeralMapAnnotations;
-		};
-/* End XCLocalSwiftPackageReference section */
-
 /* Begin XCRemoteSwiftPackageReference section */
-		0056DF3E2D95C0C100354A38 /* XCRemoteSwiftPackageReference "MichiganCities" */ = {
+		00B9554D2D96127100F7A544 /* XCRemoteSwiftPackageReference "MichiganCities" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/tomhoag/MichiganCities";
 			requirement = {
@@ -591,13 +591,21 @@
 				kind = branch;
 			};
 		};
+		00B955832D9631E200F7A544 /* XCRemoteSwiftPackageReference "EphemeralMapAnnotations" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/tomhoag/EphemeralMapAnnotations";
+			requirement = {
+				kind = versionRange;
+				maximumVersion = 1.0.0;
+				minimumVersion = 0.0.1;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0056DF3F2D95C0C100354A38 /* MichiganCities */ = {
+		000765332D9612230062B232 /* EphemeralMapAnnotations */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 0056DF3E2D95C0C100354A38 /* XCRemoteSwiftPackageReference "MichiganCities" */;
-			productName = MichiganCities;
+			productName = EphemeralMapAnnotations;
 		};
 		0056E0282D960EB300354A38 /* EphemeralMapAnnotations */ = {
 			isa = XCSwiftPackageProductDependency;
@@ -606,6 +614,11 @@
 		0099C57F2D95B714007AD593 /* MichiganCities */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = MichiganCities;
+		};
+		00B955842D9631E200F7A544 /* EphemeralMapAnnotations */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 00B955832D9631E200F7A544 /* XCRemoteSwiftPackageReference "EphemeralMapAnnotations" */;
+			productName = EphemeralMapAnnotations;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

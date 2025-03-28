@@ -35,6 +35,7 @@ struct ContentView: View, EphRepresentableProvider {
                     buttonScale = buttonScale < 0.5 ? 1.0 : 0
                 }
             }
+            .font(.largeTitle)
 
             HStack {
                 ForEach(0...6, id: \.self) { _ in
@@ -47,7 +48,7 @@ struct ContentView: View, EphRepresentableProvider {
             }
 
             Map(position: $cameraPosition, interactionModes: .all) {
-                ForEach(stateManager.annotationStates, id: \.place.id) { state in
+                stateManager.annotations { state in
                     Annotation(state.place.name, coordinate: state.place.coordinate) {
                         Circle()
                             .frame(width: 20)

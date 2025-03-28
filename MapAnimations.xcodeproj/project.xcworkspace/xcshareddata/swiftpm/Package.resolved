@@ -1,6 +1,15 @@
 {
-  "originHash" : "86821803968bcbdc38521342416d3646fcf18dbee1a1d77446dcf2bef6bc9fea",
+  "originHash" : "56076c710c8b56163c0173b13142f536082c0b71115cae21031ad6b920d0f792",
   "pins" : [
+    {
+      "identity" : "ephemeralmapannotations",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tomhoag/EphemeralMapAnnotations",
+      "state" : {
+        "revision" : "c36ee16b8804f703a464dab8b5d6e93e39786d34",
+        "version" : "0.1.0"
+      }
+    },
     {
       "identity" : "michigancities",
       "kind" : "remoteSourceControl",
